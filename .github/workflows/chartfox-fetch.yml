@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       icao:
-        description: 'Code OACI de l’aéroport (ex: LFPG)'
+        description: "Code OACI de l’aéroport (ex: LFPG)"
         required: true
 
 permissions:
@@ -26,21 +26,13 @@ jobs:
           TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
           ICAO: ${{ github.event.inputs.icao }}
         run: |
-          echo "Fetching charts for $ICAO..."
-          mkdir -p charts
-                - name: Appel à l’API ChartFox
-        env:
-          TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
-          ICAO: ${{ github.event.inputs.icao }}
-        run: |
           echo "📡 Fetching charts for $ICAO..."
           mkdir -p charts
-          curl -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
+          curl -f -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/json" \
             -o charts/${ICAO}.json
           echo "✅ JSON saved to charts/${ICAO}.json"
-
 
       - name: Commit & push JSON
         env:
