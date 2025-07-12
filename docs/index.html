@@ -3,21 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ChartFox Viewer app</title>
+  <title>ChartFox Viewer</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; background: #eef2ff; }
-    #results { margin-top: 2rem; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4ff;
+      color: #333;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      color: #1e3a8a;
+    }
+    input[type="text"] {
+      padding: 0.5rem;
+      width: 200px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      margin-left: 0.5rem;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    .results {
+      margin-top: 2rem;
+    }
+    .category {
+      margin-top: 1.5rem;
+    }
+    a {
+      text-decoration: none;
+      color: #2563eb;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <h1>Recherche de cartes d'aéroport (ChartFox)</h1>
+  <h1>🛫 ChartFox Airport Viewer</h1>
+  <p>Recherchez un aéroport par son code OACI (ex : LFPG), après que le workflow GitHub ait généré le fichier JSON.</p>
 
   <form id="icao-form">
-    <input type="text" id="icao" placeholder="Entrez un code OACI (ex: LFPG)" required />
-    <button type="submit">Rechercher</button>
+    <input type="text" id="icao" placeholder="Code OACI (ex: LFPG)" required />
+    <button type="submit">Afficher les cartes</button>
   </form>
 
-  <div id="results"></div>
+  <div id="results" class="results"></div>
 
   <script>
     const form = document.getElementById('icao-form');
@@ -25,30 +65,36 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const icao = document.getElementById('icao').value.toUpperCase();
-      results.innerHTML = "Chargement des cartes...";
+      const icao = document.getElementById('icao').value.trim().toUpperCase();
+      if (!icao) return;
+
+      results.innerHTML = `<p>🔄 Chargement des cartes pour ${icao}...</p>`;
 
       try {
         const res = await fetch(`../charts/${icao}.json`);
-        if (!res.ok) throw new Error("Fichier non trouvé. Le workflow a-t-il été lancé ?");
+        if (!res.ok) {
+          throw new Error("❌ Fichier JSON introuvable. Lance le workflow GitHub pour générer les cartes.");
+        }
         const data = await res.json();
 
         if (!data || Object.keys(data).length === 0) {
-          results.innerHTML = "Aucune carte disponible.";
+          results.innerHTML = `<p>⚠️ Aucune carte disponible pour ${icao}.</p>`;
           return;
         }
 
-        results.innerHTML = `<h2>Cartes disponibles pour ${icao}</h2>`;
+        let html = `<h2>📍 Cartes disponibles pour ${icao}</h2>`;
         for (const category in data) {
-          const list = data[category].map(chart => `
-            <li>
-              <a href="https://chartfox.org/${icao}/${chart.id}" target="_blank">${chart.name}</a>
-            </li>
-          `).join("");
-          results.innerHTML += `<h3>${category}</h3><ul>${list}</ul>`;
+          html += `<div class="category"><h3>${category}</h3><ul>`;
+          data[category].forEach(chart => {
+            html += `<li><a href="https://chartfox.org/${icao}/${chart.id}" target="_blank">${chart.name}</a></li>`;
+          });
+          html += `</ul></div>`;
         }
+
+        results.innerHTML = html;
+
       } catch (err) {
-        results.innerHTML = `<p style="color:red;">Erreur : ${err.message}</p>`;
+        results.innerHTML = `<p style="color:red;">${err.message}</p>`;
       }
     });
   </script>
