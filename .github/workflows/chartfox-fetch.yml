@@ -28,11 +28,19 @@ jobs:
         run: |
           echo "Fetching charts for $ICAO..."
           mkdir -p charts
-          curl -s -X GET "https://api.chartfox.org/v1/charts/${ICAO}" \
+                - name: Appel à l’API ChartFox
+        env:
+          TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
+          ICAO: ${{ github.event.inputs.icao }}
+        run: |
+          echo "📡 Fetching charts for $ICAO..."
+          mkdir -p charts
+          curl -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/json" \
             -o charts/${ICAO}.json
-          echo "✅ Fichier généré : charts/${ICAO}.json"
+          echo "✅ JSON saved to charts/${ICAO}.json"
+
 
       - name: Commit & push JSON
         env:
