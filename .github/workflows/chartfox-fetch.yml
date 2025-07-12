@@ -21,18 +21,26 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Appel à l’API ChartFox (verbose)
+      - name: Fetch charts from ChartFox API
         env:
           TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
           ICAO: ${{ github.event.inputs.icao }}
         run: |
-          echo "📡 Fetching charts for $ICAO with token length ${#TOKEN}..."
+          echo "📡 Fetching charts for $ICAO (token length: ${#TOKEN})…"
           mkdir -p charts
           curl -v -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/json" \
-            -o charts/${ICAO}.json || true
-          echo "✅ JSON saved to charts/${ICAO}.json (if no error above)"
+            -o charts/${ICAO}.json || (echo "❌ curl failed with status $?"; exit 1)
+          echo "✅ JSON saved to charts/${ICAO}.json"
+
+      - name: Validate JSON exists
+        run: |
+          if [ ! -s charts/${{ github.event.inputs.icao }}.json ]; then
+            echo "❌ Empty or missing JSON file."
+            exit 1
+          fi
+          head -20 charts/${{ github.event.inputs.icao }}.json
 
       - name: Commit & push JSON
         env:
