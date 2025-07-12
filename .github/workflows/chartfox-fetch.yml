@@ -1,0 +1,32 @@
+name: Fetch ChartFox Charts
+
+on:
+  workflow_dispatch:
+    inputs:
+      icao:
+        description: 'Code OACI de l\'aéroport (ex: LFPG)'
+        required: true
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Appel à l’API ChartFox
+        run: |
+          mkdir -p charts
+          curl -s -X GET "https://api.chartfox.org/v1/charts/${{ github.event.inputs.icao }}" \
+            -H "Authorization: Bearer ${{ secrets.CHARTFOX_TOKEN }}" \
+            -H "Accept: application/json" \
+            -o charts/${{ github.event.inputs.icao }}.json
+
+      - name: Commit et push vers la branche
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add charts/
+          git commit -m "Ajout automatique des cartes pour ${{ github.event.inputs.icao }}" || echo "Pas de changements"
+          git push
