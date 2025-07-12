@@ -26,16 +26,20 @@ jobs:
           TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
           ICAO: ${{ github.event.inputs.icao }}
         run: |
+          echo "Fetching charts for $ICAO..."
           mkdir -p charts
           curl -s -X GET "https://api.chartfox.org/v1/charts/${ICAO}" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/json" \
             -o charts/${ICAO}.json
+          echo "✅ Fichier généré : charts/${ICAO}.json"
 
       - name: Commit & push JSON
+        env:
+          ICAO: ${{ github.event.inputs.icao }}
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add charts/${ICAO}.json
-          git diff --cached --quiet || git commit -m "Add charts for ${ICAO}"
+          git add "charts/${ICAO}.json"
+          git diff --cached --quiet || git commit -m "📦 Add charts for ${ICAO}"
           git push
