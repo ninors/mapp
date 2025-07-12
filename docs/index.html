@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChartFox Viewer</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #eef2ff; }
+    #results { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Recherche de cartes d'aéroport (ChartFox)</h1>
+
+  <form id="icao-form">
+    <input type="text" id="icao" placeholder="Entrez un code OACI (ex: LFPG)" required />
+    <button type="submit">Rechercher</button>
+  </form>
+
+  <div id="results"></div>
+
+  <script>
+    const form = document.getElementById('icao-form');
+    const results = document.getElementById('results');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const icao = document.getElementById('icao').value.toUpperCase();
+      results.innerHTML = "Chargement des cartes...";
+
+      try {
+        const res = await fetch(`../charts/${icao}.json`);
+        if (!res.ok) throw new Error("Fichier non trouvé. Le workflow a-t-il été lancé ?");
+        const data = await res.json();
+
+        if (!data || Object.keys(data).length === 0) {
+          results.innerHTML = "Aucune carte disponible.";
+          return;
+        }
+
+        results.innerHTML = `<h2>Cartes disponibles pour ${icao}</h2>`;
+        for (const category in data) {
+          const list = data[category].map(chart => `
+            <li>
+              <a href="https://chartfox.org/${icao}/${chart.id}" target="_blank">${chart.name}</a>
+            </li>
+          `).join("");
+          results.innerHTML += `<h3>${category}</h3><ul>${list}</ul>`;
+        }
+      } catch (err) {
+        results.innerHTML = `<p style="color:red;">Erreur : ${err.message}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
