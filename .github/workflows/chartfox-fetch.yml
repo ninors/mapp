@@ -4,8 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       icao:
-        description: 'Code OACI de l\'aéroport (ex: LFPG)'
+        description: 'Code OACI de l’aéroport (ex: LFPG)'
         required: true
+
+permissions:
+  contents: write
 
 jobs:
   fetch-and-deploy:
@@ -14,19 +17,25 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Appel à l’API ChartFox
+        env:
+          TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
+          ICAO: ${{ github.event.inputs.icao }}
         run: |
           mkdir -p charts
-          curl -s -X GET "https://api.chartfox.org/v1/charts/${{ github.event.inputs.icao }}" \
-            -H "Authorization: Bearer ${{ secrets.CHARTFOX_TOKEN }}" \
+          curl -s -X GET "https://api.chartfox.org/v1/charts/${ICAO}" \
+            -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/json" \
-            -o charts/${{ github.event.inputs.icao }}.json
+            -o charts/${ICAO}.json
 
-      - name: Commit et push vers la branche
+      - name: Commit & push JSON
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add charts/
-          git commit -m "Ajout automatique des cartes pour ${{ github.event.inputs.icao }}" || echo "Pas de changements"
+          git add charts/${ICAO}.json
+          git diff --cached --quiet || git commit -m "Add charts for ${ICAO}"
           git push
