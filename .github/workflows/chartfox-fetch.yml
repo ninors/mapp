@@ -1,3 +1,23 @@
+name: Fetch ChartFox Charts
+
+on:
+workflow_dispatch:
+inputs:
+icao:
+description: "Code OACI de l’aéroport (ex: LFPG)"
+required: true
+push:
+branches:
+- main
+- principal
+
+permissions:
+contents: write
+
+jobs:
+fetch-and-deploy:
+runs-on: ubuntu-latest
+
 steps:
   - name: Checkout repo
     uses: actions/checkout@v4
@@ -5,35 +25,22 @@ steps:
       fetch-depth: 0
       persist-credentials: true
 
-  - name: Get ChartFox access token
-    id: get_token
-    env:
-      CLIENT_ID: ${{ secrets.CHARTFOX_CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CHARTFOX_CLIENT_SECRET }}
-    run: |
-      echo "🔐 Getting ChartFox access token…"
-      TOKEN_RESPONSE=$(curl -s -X POST https://auth.chartfox.org/oauth/token \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "grant_type=client_credentials" \
-        -d "client_id=${CLIENT_ID}" \
-        -d "client_secret=${CLIENT_SECRET}")
-      echo "Token response: $TOKEN_RESPONSE"
-      ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
-      if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
-        echo "❌ Failed to get access token."
-        exit 1
-      fi
-      echo "✅ Access token retrieved"
-      echo "access_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+  - name: Set ICAO variable
+    if: github.event_name == 'workflow_dispatch'
+    run: echo "ICAO=${{ github.event.inputs.icao }}" >> $GITHUB_ENV
+
+  - name: Set default ICAO for push trigger
+    if: github.event_name == 'push'
+    run: echo "ICAO=LFPG" >> $GITHUB_ENV
 
   - name: Fetch charts from ChartFox API
     env:
-      TOKEN: ${{ steps.get_token.outputs.access_token }}
-      ICAO: ${{ github.event.inputs.icao }}
+      TOKEN: ${{ secrets.CHARTFOX_TOKEN }}
+      ICAO: ${{ env.ICAO }}
     run: |
-      echo "📡 Fetching charts for $ICAO…"
+      echo "📡 Fetching charts for $ICAO (token length: ${#TOKEN})…"
       mkdir -p charts
-      curl -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
+      curl -f -s -X GET "https://api.chartfox.org/v2/airports/${ICAO}/charts/grouped" \
         -H "Authorization: Bearer ${TOKEN}" \
         -H "Accept: application/json" \
         -o charts/${ICAO}.json || (echo "❌ curl failed with status $?"; exit 1)
@@ -41,15 +48,15 @@ steps:
 
   - name: Validate JSON exists
     run: |
-      if [ ! -s charts/${{ github.event.inputs.icao }}.json ]; then
+      if [ ! -s charts/${{ env.ICAO }}.json ]; then
         echo "❌ Empty or missing JSON file."
         exit 1
       fi
-      head -20 charts/${{ github.event.inputs.icao }}.json
+      head -20 charts/${{ env.ICAO }}.json
 
   - name: Commit & push JSON
     env:
-      ICAO: ${{ github.event.inputs.icao }}
+      ICAO: ${{ env.ICAO }}
     run: |
       git config user.name "github-actions"
       git config user.email "github-actions@github.com"
